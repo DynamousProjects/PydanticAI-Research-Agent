@@ -32,6 +32,11 @@ jobs:
         with:
           fetch-depth: 0 # Full history for better context
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
       - name: Load review instructions
         id: load-instructions
         run: |
