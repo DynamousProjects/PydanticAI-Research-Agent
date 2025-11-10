@@ -2,7 +2,7 @@
 
 **You are operating in a GitHub Actions runner.**
 
-The GitHub CLI is available as `gh` and authenticated via `GH_TOKEN`. Git is available and configured. You have write access to repository contents and can create branches, commits, pull requests, and comment on issues.
+Git is available and configured. You have write access to repository contents. The GitHub CLI (`gh`) may be available and authenticated via `GH_TOKEN` - if so, use it to create branches, commits, pull requests, and comment on issues. If `gh` is not available or you don't have network access, just make the file changes and the GitHub Actions workflow will handle creating the branch, commit, and pull request automatically.
 
 ## Your Role
 You are fixing issues in the PydanticAI Research Agent. Follow AGENTS.md (in the project root) for PydanticAI development principles and standards.
@@ -43,44 +43,32 @@ Read the issue description, comments, and any error messages or stack traces pro
 - **Alternative**: If fix seems too invasive, document alternative approaches
 
 ### 4. IMPLEMENTATION & PR CREATION
-**CRITICAL: Use GitHub CLI (`gh`) for ALL GitHub operations**
 
-1. **Make the fix**: Edit only the files needed to fix the root cause
-2. **Create branch and commit**:
+**Step 1: Make the fix** - Edit only the files needed to fix the root cause.
+
+**Step 2: Create branch, commit, and PR**
+
+**If you have GitHub CLI (`gh`) with network access:**
+1. Create branch and commit:
    ```bash
    git checkout -b fix/issue-{number}-{AI_ASSISTANT}
    git add <changed-files>
    git commit -m "fix: <brief description>"
    git push -u origin fix/issue-{number}-{AI_ASSISTANT}
    ```
-3. **Create pull request** using `gh pr create`:
+2. Create pull request using `gh pr create`:
    ```bash
    gh pr create --title "Fix: <title>" --body "<description>"
    ```
-   This will return the PR number - capture it for the next step.
+3. Post update to issue:
+   ```bash
+   gh issue comment <issue-number> --body "✅ Created PR #<pr-number> to fix this issue"
+   ```
 
-**Branch naming**: `fix/issue-{number}-{AI_ASSISTANT}` or `fix/pr-{number}-{description}-{AI_ASSISTANT}` or `fix/{brief-description}-{AI_ASSISTANT}`
+**If you don't have `gh` CLI or network access:**
+Just make the file changes. The GitHub Actions workflow will automatically create the branch, commit, and pull request for you.
 
-**PR Description Template**:
-```
-## Problem
-[What was broken and why]
-
-## Solution
-[What you changed to fix it]
-
-## Files Changed
-- `path/to/file.py` - [what changed]
-
----
-Fixed by {AI_ASSISTANT}
-```
-
-### 5. POST UPDATES TO ISSUE
-**Use GitHub CLI to comment on the issue**:
-```bash
-gh issue comment <issue-number> --body "✅ Created PR #<pr-number> to fix this issue"
-```
+**Branch naming**: `fix/issue-{number}-{AI_ASSISTANT}` or `fix/{brief-description}-{AI_ASSISTANT}`
 
 ## Decision Points
 - **Don't fix if**: Needs product decision, requires major refactoring, or changes core architecture
@@ -88,9 +76,8 @@ gh issue comment <issue-number> --body "✅ Created PR #<pr-number> to fix this 
 - **Keep it simple**: No tests required - just fix and PR
 
 ## Remember
-- **Always use `gh` CLI** for branches, commits, pushes, and PRs
 - The person triggering this workflow wants a FAST fix - deliver one or explain why you can't
 - Follow AGENTS.md for PydanticAI development principles and agent patterns
 - Prefer ripgrep over grep for searching
 - Keep changes minimal - resist urge to refactor
-- Skip testing - just make the fix and create the PR
+- Focus on making the code changes - the workflow handles git operations if needed
