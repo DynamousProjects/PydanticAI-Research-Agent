@@ -42,23 +42,50 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Prepare review instructions
+      - name: Get Issue/PR Number
+        id: get-number
         run: |
-          # Get the PR number from the event
           if [ "${{ github.event_name }}" == "issue_comment" ]; then
-            PR_NUMBER="${{ github.event.issue.number }}"
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_ENV
           else
-            PR_NUMBER="${{ github.event.pull_request.number }}"
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
           fi
 
+      - name: Fetch PR details and diff
+        id: fetch-details
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Fetch the PR details and diff using GitHub CLI
+          gh pr view ${{ env.number }} --json title,body,comments,files --jq '{title,body,comments: [.comments[] | {author: .author.login, body: .body}], files: [.files[] | {path: .path, additions: .additions, deletions: .deletions}]}' > /tmp/pr-details.json
+
+          # Fetch the PR diff
+          gh pr diff ${{ env.number }} > /tmp/pr-diff.txt
+
+      - name: Prepare review instructions
+        run: |
           # Read the review template
           INSTRUCTIONS=$(cat .github/pr_review_prompt.md)
 
-          # Prepend context
+          # Read PR details
+          PR_DETAILS=$(cat /tmp/pr-details.json)
+          PR_DIFF=$(cat /tmp/pr-diff.txt)
+
+          # Prepend context with full PR details and diff
           echo "# GitHub Context" > /tmp/codex-review-prompt.md
           echo "- Repository: ${{ github.repository }}" >> /tmp/codex-review-prompt.md
-          echo "- PR Number: ${PR_NUMBER}" >> /tmp/codex-review-prompt.md
+          echo "- PR Number: ${{ env.number }}" >> /tmp/codex-review-prompt.md
           echo "- Triggered by: ${{ github.event.comment.user.login }}" >> /tmp/codex-review-prompt.md
+          echo "" >> /tmp/codex-review-prompt.md
+          echo "## Pull Request Details" >> /tmp/codex-review-prompt.md
+          echo '```json' >> /tmp/codex-review-prompt.md
+          echo "$PR_DETAILS" >> /tmp/codex-review-prompt.md
+          echo '```' >> /tmp/codex-review-prompt.md
+          echo "" >> /tmp/codex-review-prompt.md
+          echo "## Pull Request Diff" >> /tmp/codex-review-prompt.md
+          echo '```diff' >> /tmp/codex-review-prompt.md
+          echo "$PR_DIFF" >> /tmp/codex-review-prompt.md
+          echo '```' >> /tmp/codex-review-prompt.md
           echo "" >> /tmp/codex-review-prompt.md
           echo "$INSTRUCTIONS" >> /tmp/codex-review-prompt.md
 
@@ -86,7 +113,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const prNumber = ${{ github.event.issue.number || github.event.pull_request.number }};
+            const prNumber = ${{ env.number }};
 
             // Read the review output if it exists
             let reviewBody = '## Code Review by Codex\n\n';
